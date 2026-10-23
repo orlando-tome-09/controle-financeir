@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Controle financeiro</title>
+<meta name="theme-color" content="#eef0f5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#131a2b" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Controle">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+:root {
+  --bg: #eef0f5;
+  --surface: #f9fafc;
+  --ink: #1d2740;
+  --muted: #5d6882;
+  --line: #d4d9e4;
+  --accent: #1f6f6b;
+  --accent-soft: #bfe0dc;
+  --on-accent: #ffffff;
+  --track: #d9dde8;
+  --danger: #a3394a;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131a2b;
+    --surface: #1a2338;
+    --ink: #e6eaf5;
+    --muted: #9aa5c0;
+    --line: #2d3855;
+    --accent: #5fc2ba;
+    --accent-soft: #1f4a4a;
+    --on-accent: #0d1a1a;
+    --track: #2a3453;
+    --danger: #ee8a9a;
+    color-scheme: dark;
+  }
+}
+html { scroll-padding-top: env(safe-area-inset-top, 0px); background: var(--bg); }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+main {
+  max-width: 640px;
+  margin: 0 auto;
+  padding-block: 28px 56px;
+  padding-left: max(20px, env(safe-area-inset-left, 0px));
+  padding-right: max(20px, env(safe-area-inset-right, 0px));
+}
+.top { margin-bottom: 28px; }
+h1 { font-size: 1.5rem; line-height: 1.2; margin: 0 0 4px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.sub { margin: 0 0 10px; color: var(--muted); }
+
+.status { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: 0.85rem; color: var(--muted); }
+.status .dot { flex: 0 0 8px; height: 8px; border-radius: 50%; background: var(--accent); transform: translateY(-1px); }
+.status[data-state="error"] { color: var(--danger); }
+.status[data-state="error"] .dot { background: var(--danger); }
+
+.install { margin: 14px 0 0; padding: 12px 14px; font-size: 0.92rem; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.install strong { display: block; margin-bottom: 2px; }
+.install p { margin: 0; }
+.install p + p { margin-top: 6px; color: var(--muted); }
+
+.range { margin-bottom: 36px; }
+.figures { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+.figure { min-width: 0; }
+.figure.right { text-align: right; }
+.figure .label { display: block; font-size: 0.9rem; color: var(--muted); font-weight: 500; }
+.figure strong {
+  display: block;
+  font-size: clamp(1.7rem, 8vw, 2.5rem);
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.figure.max strong { color: var(--accent); }
+.figure small { display: block; color: var(--muted); font-size: 0.8rem; margin-top: 2px; }
+
+.bar { position: relative; height: 18px; margin: 18px 0 10px; background: var(--track); border-radius: 9px; overflow: hidden; }
+.fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); border-radius: 9px; transition: width 0.35s ease; }
+.bar-caption { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.facts { margin: 14px 0 0; font-size: 0.95rem; }
+
+h2 { font-size: 1.1rem; margin: 0 0 8px; font-weight: 600; }
+ul { list-style: none; margin: 0; padding: 0; }
+.patient { padding: 18px 0; border-top: 1px solid var(--line); }
+.patient:last-child { border-bottom: 1px solid var(--line); }
+.field-label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
+input[type="text"], input[type="number"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.name-field { margin-bottom: 12px; }
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row > div { min-width: 0; }
+.stepper { display: flex; gap: 6px; }
+.stepper input { min-width: 0; text-align: center; padding-left: 4px; padding-right: 4px; -moz-appearance: textfield; }
+.stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.step-btn {
+  flex: 0 0 46px;
+  min-height: 46px;
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.step-btn:active { background: var(--accent-soft); }
+.patient-total { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; font-size: 0.95rem; }
+.patient-total .amount { font-weight: 600; font-variant-numeric: tabular-nums; }
+.remove { font: inherit; font-size: 0.9rem; color: var(--danger); background: none; border: none; padding: 8px 0 8px 8px; cursor: pointer; text-decoration: underline; }
+
+.undo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 8px 14px;
+  font-size: 0.95rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.undo span { min-width: 0; overflow-wrap: anywhere; }
+.undo button { flex: none; font: inherit; font-weight: 600; color: var(--accent); background: none; border: none; padding: 8px 0 8px 8px; cursor: pointer; }
+
+.add {
+  width: 100%;
+  min-height: 50px;
+  margin-top: 18px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--on-accent);
+  background: var(--accent);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.empty { padding: 18px 0; color: var(--muted); border-top: 1px solid var(--line); }
+
+.backup { margin-top: 40px; }
+.backup-info { margin: 0 0 12px; font-size: 0.95rem; color: var(--muted); }
+.backup-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.secondary {
+  min-height: 46px;
+  padding: 8px 12px;
+  font: inherit;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.backup-msg { margin: 10px 0 0; min-height: 1.4em; font-size: 0.9rem; }
+.backup-msg[data-state="error"] { color: var(--danger); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.note { margin-top: 28px; font-size: 0.85rem; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="top">
+    <h1>Controle financeiro</h1>
+    <p class="sub">Quanto pode entrar no mês, do mínimo ao máximo.</p>
+    <p class="status" id="status" role="status" data-state="ok"><span class="dot" aria-hidden="true"></span><span id="status-text">Salvo neste aparelho</span></p>
+    <div class="install" id="install" hidden>
+      <strong>Use como aplicativo</strong>
+      <p>Toque em Compartilhar (o quadrado com a seta) e depois em “Adicionar à Tela de Início”. A partir daí, abra sempre pelo ícone.</p>
+      <p>Se já cadastrou pacientes aqui no Safari, faça um backup antes: o ícone pode abrir com a lista vazia, e aí é só restaurar.</p>
+    </div>
+  </header>
+
+  <section class="range" aria-live="polite" aria-label="Resumo do mês">
+    <div class="figures">
+      <div class="figure">
+        <span class="label">Mínimo</span>
+        <strong id="min">R$ 0,00</strong>
+        <small>1 sessão por paciente</small>
+      </div>
+      <div class="figure right max">
+        <span class="label">Máximo</span>
+        <strong id="max">R$ 0,00</strong>
+        <small>todas as sessões do mês</small>
+      </div>
+    </div>
+    <div class="bar" role="img" aria-label="Parte do máximo já garantida pelo mínimo"><div class="fill" id="fill"></div></div>
+    <p class="bar-caption" id="bar-caption">O mínimo representa 0% do máximo.</p>
+    <p class="facts" id="facts">0 pacientes, 0 sessões no mês</p>
+  </section>
+
+  <section aria-label="Pacientes">
+    <h2>Pacientes</h2>
+    <ul id="list"></ul>
+    <div class="undo" id="undo" role="status" hidden>
+      <span id="undo-text"></span>
+      <button type="button" id="undo-btn">Desfazer</button>
+    </div>
+    <button class="add" id="add" type="button">Adicionar paciente</button>
+  </section>
+
+  <section class="backup" aria-labelledby="backup-title">
+    <h2 id="backup-title">Backup</h2>
+    <p class="backup-info" id="backup-info">Nenhum backup feito ainda.</p>
+    <div class="backup-actions">
+      <button type="button" class="secondary" id="export">Fazer backup</button>
+      <button type="button" class="secondary" id="restore-btn">Restaurar backup</button>
+    </div>
+    <input type="file" id="restore" class="visually-hidden" accept=".json,application/json" tabindex="-1" aria-hidden="true">
+    <p class="backup-msg" id="backup-msg" role="status"></p>
+  </section>
+
+  <p class="note">Os dados ficam só neste aparelho e não vão para a internet. Faça um backup de vez em quando e guarde em Arquivos ou no WhatsApp. Paciente com 0 sessões não entra no mínimo nem no máximo.</p>
+</main>
+
+<script>
+(function () {
+  var KEY = "controle-financeiro-psicologa";
+  var BACKUP_KEY = "controle-financeiro-ultimo-backup";
+  var patients = [];
+  var removed = null;
+  var undoTimer = null;
+
+  var listEl = document.getElementById("list");
+  var undoEl = document.getElementById("undo");
+  var restoreIn = document.getElementById("restore");
+
+  function setStatus(ok) {
+    document.getElementById("status").setAttribute("data-state", ok ? "ok" : "error");
+    document.getElementById("status-text").textContent = ok
+      ? "Salvo neste aparelho"
+      : "Não foi possível salvar neste aparelho. Se for uma aba privada, abra numa aba normal.";
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function save() {
+    try {
+      localStorage.setItem(KEY, JSON.stringify(patients));
+      setStatus(true);
+    } catch (e) {
+      setStatus(false);
+    }
+  }
+
+  var brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+  function money(n) { return brl.format(n || 0); }
+  function newPatient() {
+    return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), name: "", sessions: 4, price: 0 };
+  }
+  // Aceita "150", "150,50", "150.50", "1.200" e "1.200,00".
+  function parsePrice(v) {
+    var s = String(v).replace(/[^\d.,]/g, "");
+    if (s.indexOf(",") >= 0) s = s.replace(/\./g, "").replace(",", ".");
+    else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+    var n = parseFloat(s);
+    return isNaN(n) || n < 0 ? 0 : n;
+  }
+  function parseSessions(v) {
+    var n = parseInt(v, 10);
+    return isNaN(n) || n < 0 ? 0 : n;
+  }
+  function nonNegative(v) { return typeof v === "number" && isFinite(v) && v >= 0 ? v : 0; }
+  // Valida o que vem do armazenamento ou de um arquivo de backup.
+  function clean(list) {
+    if (!Array.isArray(list)) return null;
+    return list.filter(function (p) {
+      return p && typeof p.id === "string" && /^[a-z0-9]+$/i.test(p.id);
+    }).map(function (p) {
+      return { id: p.id, name: typeof p.name === "string" ? p.name : "", sessions: Math.floor(nonNegative(p.sessions)), price: nonNegative(p.price) };
+    });
+  }
+
+  function minOf(p) { return p.sessions > 0 ? p.price : 0; }
+  function maxOf(p) { return p.sessions * p.price; }
+  function rangeText(p) {
+    var lo = minOf(p), hi = maxOf(p);
+    return lo === hi ? money(hi) : money(lo) + " a " + money(hi);
+  }
+
+  function updateTotals() {
+    var min = 0, max = 0, sessions = 0;
+    patients.forEach(function (p) { min += minOf(p); max += maxOf(p); sessions += p.sessions; });
+    document.getElementById("min").textContent = money(min);
+    document.getElementById("max").textContent = money(max);
+    var pct = max > 0 ? Math.round((min / max) * 100) : 0;
+    document.getElementById("fill").style.width = pct + "%";
+    document.getElementById("bar-caption").textContent = "O mínimo representa " + pct + "% do máximo.";
+    var np = patients.length;
+    document.getElementById("facts").textContent =
+      np + (np === 1 ? " paciente, " : " pacientes, ") + sessions + (sessions === 1 ? " sessão no mês" : " sessões no mês");
+  }
+
+  // ---- Remover e desfazer ----
+
+  function showUndo(p, index) {
+    removed = { patient: p, index: index };
+    var name = p.name.trim();
+    document.getElementById("undo-text").textContent = (name ? "“" + name + "”" : "Paciente") + " saiu da lista.";
+    undoEl.hidden = false;
+    clearTimeout(undoTimer);
+    undoTimer = setTimeout(hideUndo, 8000);
+  }
+  function hideUndo() {
+    removed = null;
+    undoEl.hidden = true;
+  }
+  function undoRemove() {
+    if (!removed) return;
+    var back = removed;
+    hideUndo();
+    var alreadyBack = patients.some(function (x) { return x.id === back.patient.id; });
+    if (!alreadyBack) patients.splice(Math.min(back.index, patients.length), 0, back.patient);
+    save();
+    render();
+  }
+
+  function render() {
+    listEl.innerHTML = "";
+    if (!patients.length) {
+      var empty = document.createElement("li");
+      empty.className = "empty";
+      empty.textContent = "Adicione a primeira paciente para ver quanto pode receber no mês.";
+      listEl.appendChild(empty);
+    }
+    patients.forEach(function (p, i) {
+      var li = document.createElement("li");
+      li.className = "patient";
+      var n = i + 1;
+      li.innerHTML =
+        '<div class="name-field">' +
+          '<label class="field-label" for="name-' + p.id + '">Nome da paciente</label>' +
+          '<input type="text" id="name-' + p.id + '" placeholder="Paciente ' + n + '" autocomplete="off">' +
+        '</div>' +
+        '<div class="row">' +
+          '<div>' +
+            '<label class="field-label" for="ses-' + p.id + '">Sessões no mês</label>' +
+            '<div class="stepper">' +
+              '<button type="button" class="step-btn" data-act="dec" aria-label="Menos uma sessão">−</button>' +
+              '<input type="number" id="ses-' + p.id + '" min="0" step="1" inputmode="numeric">' +
+              '<button type="button" class="step-btn" data-act="inc" aria-label="Mais uma sessão">+</button>' +
+            '</div>' +
+          '</div>' +
+          '<div>' +
+            '<label class="field-label" for="price-' + p.id + '">Valor por sessão (R$)</label>' +
+            '<input type="text" id="price-' + p.id + '" inputmode="decimal" placeholder="0,00" autocomplete="off">' +
+          '</div>' +
+        '</div>' +
+        '<div class="patient-total">' +
+          '<span>Entra <span class="amount"></span></span>' +
+          '<button type="button" class="remove" data-act="remove">Remover</button>' +
+        '</div>';
+
+      var nameIn = li.querySelector("#name-" + p.id);
+      var sesIn = li.querySelector("#ses-" + p.id);
+      var priceIn = li.querySelector("#price-" + p.id);
+      var amount = li.querySelector(".amount");
+
+      nameIn.value = p.name;
+      sesIn.value = p.sessions;
+      priceIn.value = p.price ? String(p.price).replace(".", ",") : "";
+      amount.textContent = rangeText(p);
+
+      function refresh() { amount.textContent = rangeText(p); updateTotals(); save(); }
+
+      nameIn.addEventListener("input", function () { p.name = nameIn.value; save(); });
+      sesIn.addEventListener("input", function () { p.sessions = parseSessions(sesIn.value); refresh(); });
+      priceIn.addEventListener("input", function () { p.price = parsePrice(priceIn.value); refresh(); });
+      li.querySelector('[data-act="dec"]').addEventListener("click", function () {
+        p.sessions = Math.max(0, p.sessions - 1); sesIn.value = p.sessions; refresh();
+      });
+      li.querySelector('[data-act="inc"]').addEventListener("click", function () {
+        p.sessions = p.sessions + 1; sesIn.value = p.sessions; refresh();
+      });
+      li.querySelector('[data-act="remove"]').addEventListener("click", function () {
+        var index = patients.findIndex(function (x) { return x.id === p.id; });
+        if (index < 0) return;
+        patients.splice(index, 1);
+        showUndo(p, index);
+        save();
+        render();
+      });
+      listEl.appendChild(li);
+    });
+    updateTotals();
+  }
+
+  // ---- Backup ----
+
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+  function showBackupMsg(text, isError) {
+    var el = document.getElementById("backup-msg");
+    el.textContent = text;
+    el.setAttribute("data-state", isError ? "error" : "ok");
+  }
+  function renderBackupInfo() {
+    var last = null;
+    try { last = localStorage.getItem(BACKUP_KEY); } catch (e) {}
+    var date = last ? new Date(last) : null;
+    document.getElementById("backup-info").textContent = date && !isNaN(date)
+      ? "Último backup em " + date.toLocaleDateString("pt-BR") + "."
+      : "Nenhum backup feito ainda.";
+  }
+  function markBackup() {
+    try { localStorage.setItem(BACKUP_KEY, new Date().toISOString()); } catch (e) {}
+    renderBackupInfo();
+    showBackupMsg("Backup pronto. Guarde o arquivo em Arquivos ou mande para você no WhatsApp.", false);
+  }
+  function download(file) {
+    var url = URL.createObjectURL(file);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+  function exportBackup() {
+    var d = new Date();
+    var name = "controle-financeiro-backup-" + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + ".json";
+    var json = JSON.stringify({ app: "controle-financeiro", version: 1, exportedAt: d.toISOString(), patients: patients }, null, 2);
+    var file = new File([json], name, { type: "application/json" });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      navigator.share({ files: [file], title: "Backup do controle financeiro" }).then(markBackup, function (e) {
+        if (e && e.name === "AbortError") return;
+        download(file);
+        markBackup();
+      });
+      return;
+    }
+    download(file);
+    markBackup();
+  }
+  function restoreBackup(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data = null;
+      try { data = JSON.parse(reader.result); } catch (e) {}
+      var list = clean(Array.isArray(data) ? data : data && data.patients);
+      if (!list) {
+        showBackupMsg("Este arquivo não é um backup do controle financeiro.", true);
+        return;
+      }
+      var count = list.length + (list.length === 1 ? " paciente" : " pacientes");
+      if (!window.confirm("Trocar a lista atual pela do backup (" + count + ")?")) return;
+      patients = list;
+      hideUndo();
+      save();
+      render();
+      showBackupMsg("Backup restaurado: " + count + ".", false);
+    };
+    reader.onerror = function () {
+      showBackupMsg("Não foi possível ler o arquivo. Tente escolher de novo.", true);
+    };
+    reader.readAsText(file);
+  }
+
+  // ---- Instalação no iPhone ----
+
+  function isIos() {
+    return /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  }
+  function isInstalled() {
+    return window.navigator.standalone === true || (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches);
+  }
+
+  document.getElementById("add").addEventListener("click", function () {
+    var p = newPatient();
+    patients.push(p);
+    save();
+    render();
+    var el = document.getElementById("name-" + p.id);
+    if (el) el.focus();
+  });
+  document.getElementById("undo-btn").addEventListener("click", undoRemove);
+  document.getElementById("export").addEventListener("click", exportBackup);
+  document.getElementById("restore-btn").addEventListener("click", function () { restoreIn.click(); });
+  restoreIn.addEventListener("change", function () {
+    var file = restoreIn.files && restoreIn.files[0];
+    if (file) restoreBackup(file);
+    restoreIn.value = "";
+  });
+
+  document.getElementById("install").hidden = !(isIos() && !isInstalled());
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
+  var secure = location.protocol === "https:" || location.hostname === "localhost";
+  if ("serviceWorker" in navigator && secure) navigator.serviceWorker.register("sw.js").catch(function () {});
+
+  patients = clean(load()) || [newPatient()];
+  save();
+  render();
+  renderBackupInfo();
+})();
+</script>
+</body>
+</html>
