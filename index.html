@@ -25,6 +25,8 @@
   --on-accent: #ffffff;
   --track: #d9dde8;
   --danger: #a3394a;
+  --due-ink: #7a4e0e;
+  --due-soft: #f3e3c4;
   color-scheme: light;
   box-sizing: border-box;
   padding-top: env(safe-area-inset-top, 0px);
@@ -42,6 +44,8 @@
     --on-accent: #0d1a1a;
     --track: #2a3453;
     --danger: #ee8a9a;
+    --due-ink: #f0c987;
+    --due-soft: #3d3220;
     color-scheme: dark;
   }
 }
@@ -100,11 +104,12 @@ h1 { font-size: 1.5rem; line-height: 1.2; margin: 0 0 4px; font-weight: 700; let
 .facts { margin: 14px 0 0; font-size: 0.95rem; }
 
 h2 { font-size: 1.1rem; margin: 0 0 8px; font-weight: 600; }
+.section-sub { margin: -4px 0 12px; font-size: 0.9rem; color: var(--muted); }
 ul { list-style: none; margin: 0; padding: 0; }
 .patient { padding: 18px 0; border-top: 1px solid var(--line); }
 .patient:last-child { border-bottom: 1px solid var(--line); }
 .field-label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 4px; font-weight: 500; }
-input[type="text"], input[type="number"] {
+input[type="text"], input[type="number"], input[type="tel"] {
   width: 100%;
   min-height: 46px;
   padding: 10px 12px;
@@ -114,9 +119,10 @@ input[type="text"], input[type="number"] {
   border: 1px solid var(--line);
   border-radius: 8px;
 }
-input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+input:focus-visible, button:focus-visible, a:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 .name-field { margin-bottom: 12px; }
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row + .row { margin-top: 12px; }
 .row > div { min-width: 0; }
 .stepper { display: flex; gap: 6px; }
 .stepper input { min-width: 0; text-align: center; padding-left: 4px; padding-right: 4px; -moz-appearance: textfield; }
@@ -166,6 +172,32 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
   cursor: pointer;
 }
 .empty { padding: 18px 0; color: var(--muted); border-top: 1px solid var(--line); }
+
+.reminders { margin-bottom: 36px; }
+.reminder { padding: 16px 0; border-top: 1px solid var(--line); }
+.reminder:last-child { border-bottom: 1px solid var(--line); }
+.reminder-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; }
+.reminder-head strong { min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.pill { flex: none; padding: 2px 10px; font-size: 0.8rem; font-weight: 600; color: var(--due-ink); background: var(--due-soft); border-radius: 999px; }
+.pill.sent { color: var(--accent); background: var(--accent-soft); }
+.reminder-sum { margin: 4px 0 12px; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.reminder-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.wa {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 8px 12px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-radius: 10px;
+}
+.reminder-warn { margin: 0; align-self: center; font-size: 0.9rem; color: var(--danger); }
+.pix-warning { margin: 12px 0 0; font-size: 0.9rem; color: var(--danger); }
+.pix-field { margin-top: 16px; }
 
 .backup { margin-top: 40px; }
 .backup-info { margin: 0 0 12px; font-size: 0.95rem; color: var(--muted); }
@@ -219,6 +251,17 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
     <p class="facts" id="facts">0 pacientes, 0 sessões no mês</p>
   </section>
 
+  <section class="reminders" aria-labelledby="reminders-title">
+    <h2 id="reminders-title">Lembretes de cobrança</h2>
+    <p class="section-sub">Quem vence hoje ou amanhã, com a mensagem pronta para o WhatsApp.</p>
+    <ul id="reminders"></ul>
+    <p class="pix-warning" id="pix-warning" hidden>Cadastre sua chave Pix abaixo para ela ir junto na mensagem.</p>
+    <div class="pix-field">
+      <label class="field-label" for="pix">Sua chave Pix</label>
+      <input type="text" id="pix" placeholder="CPF, e-mail, celular ou chave aleatória" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+  </section>
+
   <section aria-label="Pacientes">
     <h2>Pacientes</h2>
     <ul id="list"></ul>
@@ -246,14 +289,18 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
 <script>
 (function () {
   var KEY = "controle-financeiro-psicologa";
+  var SETTINGS_KEY = "controle-financeiro-config";
   var BACKUP_KEY = "controle-financeiro-ultimo-backup";
   var patients = [];
+  var settings = { pixKey: "" };
   var removed = null;
   var undoTimer = null;
 
   var listEl = document.getElementById("list");
+  var remindersEl = document.getElementById("reminders");
   var undoEl = document.getElementById("undo");
   var restoreIn = document.getElementById("restore");
+  var pixIn = document.getElementById("pix");
 
   function setStatus(ok) {
     document.getElementById("status").setAttribute("data-state", ok ? "ok" : "error");
@@ -262,9 +309,9 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
       : "Não foi possível salvar neste aparelho. Se for uma aba privada, abra numa aba normal.";
   }
 
-  function load() {
+  function read(key) {
     try {
-      var raw = localStorage.getItem(KEY);
+      var raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : null;
     } catch (e) {
       return null;
@@ -273,16 +320,24 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
   function save() {
     try {
       localStorage.setItem(KEY, JSON.stringify(patients));
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       setStatus(true);
     } catch (e) {
       setStatus(false);
     }
   }
 
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
   var brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
   function money(n) { return brl.format(n || 0); }
   function newPatient() {
-    return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), name: "", sessions: 4, price: 0 };
+    return { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), name: "", sessions: 4, price: 0, phone: "", dueDay: 0, remindedFor: "" };
   }
   // Aceita "150", "150,50", "150.50", "1.200" e "1.200,00".
   function parsePrice(v) {
@@ -296,6 +351,10 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
     var n = parseInt(v, 10);
     return isNaN(n) || n < 0 ? 0 : n;
   }
+  function parseDueDay(v) {
+    var n = parseInt(v, 10);
+    return n >= 1 && n <= 31 ? n : 0;
+  }
   function nonNegative(v) { return typeof v === "number" && isFinite(v) && v >= 0 ? v : 0; }
   // Valida o que vem do armazenamento ou de um arquivo de backup.
   function clean(list) {
@@ -303,8 +362,19 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
     return list.filter(function (p) {
       return p && typeof p.id === "string" && /^[a-z0-9]+$/i.test(p.id);
     }).map(function (p) {
-      return { id: p.id, name: typeof p.name === "string" ? p.name : "", sessions: Math.floor(nonNegative(p.sessions)), price: nonNegative(p.price) };
+      return {
+        id: p.id,
+        name: typeof p.name === "string" ? p.name : "",
+        sessions: Math.floor(nonNegative(p.sessions)),
+        price: nonNegative(p.price),
+        phone: typeof p.phone === "string" ? p.phone.slice(0, 30) : "",
+        dueDay: parseDueDay(p.dueDay),
+        remindedFor: typeof p.remindedFor === "string" && /^\d{4}-\d{2}-\d{2}$/.test(p.remindedFor) ? p.remindedFor : ""
+      };
     });
+  }
+  function cleanSettings(s) {
+    return { pixKey: s && typeof s.pixKey === "string" ? s.pixKey.slice(0, 140) : "" };
   }
 
   function minOf(p) { return p.sessions > 0 ? p.price : 0; }
@@ -313,6 +383,8 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
     var lo = minOf(p), hi = maxOf(p);
     return lo === hi ? money(hi) : money(lo) + " a " + money(hi);
   }
+  function sessionsText(n) { return n + (n === 1 ? " sessão" : " sessões"); }
+  function displayName(p) { return p.name.trim() || "Paciente sem nome"; }
 
   function updateTotals() {
     var min = 0, max = 0, sessions = 0;
@@ -325,6 +397,140 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
     var np = patients.length;
     document.getElementById("facts").textContent =
       np + (np === 1 ? " paciente, " : " pacientes, ") + sessions + (sessions === 1 ? " sessão no mês" : " sessões no mês");
+  }
+
+  // ---- Lembretes de cobrança ----
+
+  function pad(n) { return n < 10 ? "0" + n : String(n); }
+  function today() {
+    var now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  function isoDay(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function shortDay(d) { return pad(d.getDate()) + "/" + pad(d.getMonth() + 1); }
+  // Vencimento no dia 31 cai no último dia dos meses mais curtos.
+  function dueDateIn(p, year, month) {
+    var last = new Date(year, month + 1, 0).getDate();
+    return new Date(year, month, Math.min(p.dueDay, last));
+  }
+  function reminderFor(p, day0) {
+    if (!p.dueDay || maxOf(p) <= 0) return null;
+    var days = [{ date: day0, when: "hoje" }, { date: addDays(day0, 1), when: "amanhã" }];
+    for (var i = 0; i < days.length; i++) {
+      var d = days[i].date;
+      if (isoDay(dueDateIn(p, d.getFullYear(), d.getMonth())) === isoDay(d)) return days[i];
+    }
+    return null;
+  }
+  function nextDue(p, day0) {
+    var from = addDays(day0, 2);
+    var due = dueDateIn(p, from.getFullYear(), from.getMonth());
+    return due < from ? dueDateIn(p, from.getFullYear(), from.getMonth() + 1) : due;
+  }
+  function reminderText(p, r) {
+    var first = p.name.trim().split(/\s+/)[0];
+    var lines = [
+      (first ? "Olá, " + first + "!" : "Olá!") + " Passando para lembrar que " + r.when + " (" + shortDay(r.date) +
+        ") vence o pagamento de " + sessionsText(p.sessions) + ", no total de " + money(maxOf(p)) + "."
+    ];
+    if (settings.pixKey.trim()) lines.push("Chave Pix: " + settings.pixKey.trim());
+    lines.push("Qualquer dúvida, estou à disposição.");
+    return lines.join("\n\n");
+  }
+  // Número no formato do wa.me: DDI + DDD + número. Sem "+", assume Brasil (55).
+  function whatsappNumber(phone) {
+    var raw = String(phone || "").trim();
+    var digits = raw.replace(/\D/g, "");
+    if (raw.charAt(0) === "+") return digits.length >= 8 && digits.length <= 15 ? digits : "";
+    digits = digits.replace(/^0+/, "");
+    if (digits.length === 10 || digits.length === 11) digits = "55" + digits;
+    return /^55\d{10,11}$/.test(digits) ? digits : "";
+  }
+
+  function fallbackCopy(text) {
+    var area = el("textarea", "visually-hidden");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    document.body.appendChild(area);
+    area.select();
+    area.setSelectionRange(0, text.length);
+    var ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) {}
+    area.remove();
+    return ok;
+  }
+  function copyText(text, button) {
+    function done(ok) {
+      button.textContent = ok ? "Mensagem copiada" : "Não deu para copiar";
+      setTimeout(function () { button.textContent = "Copiar mensagem"; }, 2000);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () { done(true); }, function () { done(fallbackCopy(text)); });
+      return;
+    }
+    done(fallbackCopy(text));
+  }
+
+  function reminderItem(p, r) {
+    var sent = p.remindedFor === isoDay(r.date);
+    var text = reminderText(p, r);
+    var number = whatsappNumber(p.phone);
+    var li = el("li", "reminder");
+
+    var head = el("div", "reminder-head");
+    head.appendChild(el("strong", "", displayName(p)));
+    head.appendChild(el("span", sent ? "pill sent" : "pill", sent ? "Lembrete enviado" : "Vence " + r.when + ", " + shortDay(r.date)));
+    li.appendChild(head);
+    li.appendChild(el("p", "reminder-sum", sessionsText(p.sessions) + " · " + money(maxOf(p))));
+
+    var actions = el("div", "reminder-actions");
+    if (number) {
+      var link = el("a", "wa", sent ? "Enviar de novo" : "Enviar no WhatsApp");
+      link.href = "https://wa.me/" + number + "?text=" + encodeURIComponent(text);
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.addEventListener("click", function () {
+        p.remindedFor = isoDay(r.date);
+        save();
+        setTimeout(renderReminders, 0);
+      });
+      actions.appendChild(link);
+    } else {
+      actions.appendChild(el("p", "reminder-warn", p.phone.trim() ? "Celular incompleto. Use DDD e número." : "Cadastre o celular para enviar."));
+    }
+    var copy = el("button", "secondary", "Copiar mensagem");
+    copy.type = "button";
+    copy.addEventListener("click", function () { copyText(text, copy); });
+    actions.appendChild(copy);
+    li.appendChild(actions);
+    return li;
+  }
+
+  function emptyReminders(day0) {
+    var next = null;
+    patients.forEach(function (p) {
+      if (!p.dueDay || maxOf(p) <= 0) return;
+      var d = nextDue(p, day0);
+      if (!next || d < next.date) next = { p: p, date: d };
+    });
+    return el("li", "empty", next
+      ? "Ninguém vence hoje nem amanhã. Próximo vencimento: " + displayName(next.p) + ", em " + shortDay(next.date) + "."
+      : "Preencha o celular e o dia do vencimento das pacientes para os lembretes aparecerem aqui.");
+  }
+
+  function renderReminders() {
+    var day0 = today();
+    var due = [];
+    patients.forEach(function (p) {
+      var r = reminderFor(p, day0);
+      if (r) due.push({ p: p, r: r });
+    });
+    due.sort(function (a, b) { return a.r.date - b.r.date; });
+    remindersEl.innerHTML = "";
+    if (!due.length) remindersEl.appendChild(emptyReminders(day0));
+    due.forEach(function (item) { remindersEl.appendChild(reminderItem(item.p, item.r)); });
+    document.getElementById("pix-warning").hidden = !(due.length && !settings.pixKey.trim());
   }
 
   // ---- Remover e desfazer ----
@@ -354,10 +560,7 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
   function render() {
     listEl.innerHTML = "";
     if (!patients.length) {
-      var empty = document.createElement("li");
-      empty.className = "empty";
-      empty.textContent = "Adicione a primeira paciente para ver quanto pode receber no mês.";
-      listEl.appendChild(empty);
+      listEl.appendChild(el("li", "empty", "Adicione a primeira paciente para ver quanto pode receber no mês."));
     }
     patients.forEach(function (p, i) {
       var li = document.createElement("li");
@@ -382,6 +585,16 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
             '<input type="text" id="price-' + p.id + '" inputmode="decimal" placeholder="0,00" autocomplete="off">' +
           '</div>' +
         '</div>' +
+        '<div class="row">' +
+          '<div>' +
+            '<label class="field-label" for="phone-' + p.id + '">Celular (WhatsApp)</label>' +
+            '<input type="tel" id="phone-' + p.id + '" inputmode="tel" placeholder="(11) 91234-5678" autocomplete="off">' +
+          '</div>' +
+          '<div>' +
+            '<label class="field-label" for="due-' + p.id + '">Dia do vencimento</label>' +
+            '<input type="number" id="due-' + p.id + '" min="1" max="31" step="1" inputmode="numeric" placeholder="Ex.: 10">' +
+          '</div>' +
+        '</div>' +
         '<div class="patient-total">' +
           '<span>Entra <span class="amount"></span></span>' +
           '<button type="button" class="remove" data-act="remove">Remover</button>' +
@@ -390,18 +603,24 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
       var nameIn = li.querySelector("#name-" + p.id);
       var sesIn = li.querySelector("#ses-" + p.id);
       var priceIn = li.querySelector("#price-" + p.id);
+      var phoneIn = li.querySelector("#phone-" + p.id);
+      var dueIn = li.querySelector("#due-" + p.id);
       var amount = li.querySelector(".amount");
 
       nameIn.value = p.name;
       sesIn.value = p.sessions;
       priceIn.value = p.price ? String(p.price).replace(".", ",") : "";
+      phoneIn.value = p.phone;
+      dueIn.value = p.dueDay || "";
       amount.textContent = rangeText(p);
 
-      function refresh() { amount.textContent = rangeText(p); updateTotals(); save(); }
+      function refresh() { amount.textContent = rangeText(p); updateTotals(); renderReminders(); save(); }
 
-      nameIn.addEventListener("input", function () { p.name = nameIn.value; save(); });
+      nameIn.addEventListener("input", function () { p.name = nameIn.value; renderReminders(); save(); });
       sesIn.addEventListener("input", function () { p.sessions = parseSessions(sesIn.value); refresh(); });
       priceIn.addEventListener("input", function () { p.price = parsePrice(priceIn.value); refresh(); });
+      phoneIn.addEventListener("input", function () { p.phone = phoneIn.value; renderReminders(); save(); });
+      dueIn.addEventListener("input", function () { p.dueDay = parseDueDay(dueIn.value); renderReminders(); save(); });
       li.querySelector('[data-act="dec"]').addEventListener("click", function () {
         p.sessions = Math.max(0, p.sessions - 1); sesIn.value = p.sessions; refresh();
       });
@@ -419,15 +638,15 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
       listEl.appendChild(li);
     });
     updateTotals();
+    renderReminders();
   }
 
   // ---- Backup ----
 
-  function pad(n) { return n < 10 ? "0" + n : String(n); }
   function showBackupMsg(text, isError) {
-    var el = document.getElementById("backup-msg");
-    el.textContent = text;
-    el.setAttribute("data-state", isError ? "error" : "ok");
+    var msg = document.getElementById("backup-msg");
+    msg.textContent = text;
+    msg.setAttribute("data-state", isError ? "error" : "ok");
   }
   function renderBackupInfo() {
     var last = null;
@@ -455,7 +674,7 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
   function exportBackup() {
     var d = new Date();
     var name = "controle-financeiro-backup-" + d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + ".json";
-    var json = JSON.stringify({ app: "controle-financeiro", version: 1, exportedAt: d.toISOString(), patients: patients }, null, 2);
+    var json = JSON.stringify({ app: "controle-financeiro", version: 2, exportedAt: d.toISOString(), settings: settings, patients: patients }, null, 2);
     var file = new File([json], name, { type: "application/json" });
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       navigator.share({ files: [file], title: "Backup do controle financeiro" }).then(markBackup, function (e) {
@@ -481,6 +700,10 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
       var count = list.length + (list.length === 1 ? " paciente" : " pacientes");
       if (!window.confirm("Trocar a lista atual pela do backup (" + count + ")?")) return;
       patients = list;
+      if (data && data.settings) {
+        settings = cleanSettings(data.settings);
+        pixIn.value = settings.pixKey;
+      }
       hideUndo();
       save();
       render();
@@ -506,8 +729,8 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
     patients.push(p);
     save();
     render();
-    var el = document.getElementById("name-" + p.id);
-    if (el) el.focus();
+    var input = document.getElementById("name-" + p.id);
+    if (input) input.focus();
   });
   document.getElementById("undo-btn").addEventListener("click", undoRemove);
   document.getElementById("export").addEventListener("click", exportBackup);
@@ -517,13 +740,24 @@ input:focus-visible, button:focus-visible { outline: 3px solid var(--accent); ou
     if (file) restoreBackup(file);
     restoreIn.value = "";
   });
+  pixIn.addEventListener("input", function () {
+    settings.pixKey = pixIn.value;
+    renderReminders();
+    save();
+  });
+  // O app pode ficar aberto de um dia para o outro: refaz a lista ao voltar para ele.
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) renderReminders();
+  });
 
   document.getElementById("install").hidden = !(isIos() && !isInstalled());
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {});
   var secure = location.protocol === "https:" || location.hostname === "localhost";
   if ("serviceWorker" in navigator && secure) navigator.serviceWorker.register("sw.js").catch(function () {});
 
-  patients = clean(load()) || [newPatient()];
+  patients = clean(read(KEY)) || [newPatient()];
+  settings = cleanSettings(read(SETTINGS_KEY));
+  pixIn.value = settings.pixKey;
   save();
   render();
   renderBackupInfo();
